@@ -1,0 +1,59 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Captured WordPress site in public/. All same-origin asset URLs were already
+      # rewritten root-absolute (/wp-content/...) at capture time, and the pages use
+      # clean trailing-slash URLs (<route>/index.html). For the /web-animation7
+      # subpath, prefix the internal page links AND every /wp-content/ reference —
+      # which appear after "=", "'", "(" or ":" delimiters (attrs, CSS-in-JS image
+      # arrays, and the Complianz "css_file" JSON config). CSS url() are relative
+      # (resolve fine) and JS libs are full CDN URLs (unchanged).
+      - name: Prefix paths for the /web-animation7 subpath
+        run: |
+          BP=/web-animation7
+          rm -rf _site && cp -r public _site
+          find _site -name '*.html' -print0 | xargs -0 sed -i \
+            -e 's#="/"#="'"$BP"'/"#g' \
+            -e 's#="/notre-carte#="'"$BP"'/notre-carte#g' \
+            -e 's#="/notre-restaurant#="'"$BP"'/notre-restaurant#g' \
+            -e 's#="/groupes-evenements#="'"$BP"'/groupes-evenements#g' \
+            -e 's#="/reservation#="'"$BP"'/reservation#g' \
+            -e 's#="/rgpd#="'"$BP"'/rgpd#g' \
+            -e 's#="/mentions-legales#="'"$BP"'/mentions-legales#g' \
+            -e 's#="/credits#="'"$BP"'/credits#g'
+          find _site -name '*.html' -print0 | xargs -0 sed -i -E \
+            "s#([\"'(=])/wp-content/#\1$BP/wp-content/#g"
+          touch _site/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
