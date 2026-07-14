@@ -1,0 +1,8 @@
+{
+  "name": "andreucci",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Faithful 1:1 clone of andreucci.fr (WordPress + GSAP/ScrollTrigger/Locomotive Scroll)",
+  "scripts": { "dev": "node server.mjs public 3600", "start": "node server.mjs public 3600" }
+}
